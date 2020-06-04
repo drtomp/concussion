@@ -1,0 +1,119 @@
+import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
+import 'package:speech_recognition/speech_recognition.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:concussion_protocol/Sideline/scat5.dart';
+
+void main() => runApp(MaterialApp(
+      routes: {'/scat5': (context) => SCAT5Doc()},
+    ));
+
+class SidelineHome extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+        appBar: AppBar(
+          title: Text('Sideline Coverage', textAlign: TextAlign.center),
+        ),
+        body: Column(
+          children: <Widget>[
+            GestureDetector(
+                onTap: () {
+                  Navigator.push(context,
+                      MaterialPageRoute(builder: (context) => SCAT5Doc()));
+                },
+                child: Card(
+                    color: Colors.red[400],
+                    child: ListTile(
+                        title: Text(
+                      'Select here to review SCAT5 form for those over the age of 12',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    )))),
+            SidelineNotes()
+          ],
+        ));
+  }
+}
+
+class SidelineNotes extends StatefulWidget {
+  @override
+  _SidelineNotes createState() => _SidelineNotes();
+}
+
+class _SidelineNotes extends State<SidelineNotes> {
+  SpeechRecognition _speechRecognition;
+  bool _isAvailable = false;
+  bool _isListening = false;
+
+  String resultText = '';
+  @override
+  void initState() {
+    super.initState();
+    initSpeechRecognizer();
+  }
+
+  void initSpeechRecognizer() {
+    _speechRecognition = SpeechRecognition();
+
+    _speechRecognition.setAvailabilityHandler(
+      (bool result) => setState(() => _isAvailable = result),
+    );
+
+    _speechRecognition.setRecognitionStartedHandler(
+      () => setState(() => _isListening = true),
+    );
+
+    _speechRecognition.setRecognitionResultHandler(
+      (String speech) => setState(() => resultText = speech),
+    );
+
+    _speechRecognition.setRecognitionCompleteHandler(
+      () => setState(() => _isListening = false),
+    );
+
+    _speechRecognition.activate().then(
+          (result) => setState(() => _isAvailable = result),
+        );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+        child: Card(
+      child: Column(children: <Widget>[
+        Ink(
+          color: Colors.lightGreen[300],
+          child: ListTile(
+              leading: Icon(Icons.short_text),
+              title: Text('Game Notes'),
+              trailing: IconButton(
+                icon: Icon(Icons.speaker_phone),
+                onPressed: () {
+                  if (_isAvailable && !_isListening)
+                    _speechRecognition
+                        .listen(locale: "en_US")
+                        .then((resultText) => print('$resultText'));
+                },
+              )),
+        ),
+        TextFormField(
+          textCapitalization: TextCapitalization.sentences,
+          decoration: InputDecoration(
+              hintText: 'Add notes here. Do not include HIPPA information',
+              border: OutlineInputBorder()),
+          keyboardType: TextInputType.multiline,
+          autocorrect: true,
+          minLines: 1,
+          maxLines: 50,
+          onFieldSubmitted: (String str) {
+            setState(() {
+              resultText = str;
+            });
+          },
+        ),
+        Text('')
+      ]),
+    ));
+  }
+}
